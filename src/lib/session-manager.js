@@ -258,7 +258,7 @@ SessionManager.prototype.killCurrentSession = function (callback) {
 
   this._getWebdriverSessions(function (err, sessions) {
 
-    if (sessions.length) {
+    if (sessions && sessions.length) {
       sessions.forEach(function (session) {
         var sessionId = session.id;
         log.debug('[chimp][session-manager]', 'deleting wd session', sessionId);

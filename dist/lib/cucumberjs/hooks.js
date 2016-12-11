@@ -90,7 +90,7 @@ module.exports = function hooks() {
 
     if (process.env['chimp.browser'] !== 'phantomjs') {
       log.debug('[chimp][hooks] Ending browser session');
-      global.wrapAsync(global.sessionManager.killCurrentSession, global.browser)();
+      global.wrapAsync(global.sessionManager.killCurrentSession, global.sessionManager)();
       log.debug('[chimp][hooks] Ended browser sessions');
     }
 

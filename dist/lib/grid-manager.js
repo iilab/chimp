@@ -244,7 +244,7 @@ SessionManager.prototype.killCurrentSession = function (callback) {
     return;
   }
 
-  this.end();
+  global.browser.end();
   callback();
 };
 

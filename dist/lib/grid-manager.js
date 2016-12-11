@@ -1,8 +1,10 @@
+'use strict';
+
 var requestretry = require('requestretry'),
-  request = require('request'),
-  log = require('./log'),
-  booleanHelper = require('./boolean-helper'),
-  parseBoolean = require('./environment-variable-parsers').parseBoolean;
+    request = require('request'),
+    log = require('./log'),
+    booleanHelper = require('./boolean-helper'),
+    parseBoolean = require('./environment-variable-parsers').parseBoolean;
 
 /**
  * SessionManager Constructor
@@ -12,19 +14,19 @@ var requestretry = require('requestretry'),
  */
 function SessionManager(options) {
 
-  log.debug('[chimp][session-manager] options are', options);
+  log.debug('[chimp][grid-manager] options are', options);
 
   if (!options) {
-     throw new Error('options is required');
-   }
+    throw new Error('options is required');
+  }
 
   if (!options.port) {
-     throw new Error('options.port is required');
-   }
+    throw new Error('options.port is required');
+  }
 
   if (!options.browser && !options.deviceName) {
-     throw new Error('[chimp][session-manager] options.browser or options.deviceName is required');
-   }
+    throw new Error('[chimp][grid-manager] options.browser or options.deviceName is required');
+  }
 
   this.options = options;
 
@@ -32,8 +34,7 @@ function SessionManager(options) {
   this.retryDelay = 3000;
   this.retry = 0;
 
-  log.debug('[chimp][session-manager] created a new SessionManager', options);
-
+  log.debug('[chimp][grid-manager] created a new SessionManager', options);
 }
 
 SessionManager.prototype.webdriver = require('xolvio-sync-webdriverio');
@@ -47,31 +48,31 @@ SessionManager.prototype.webdriver = require('xolvio-sync-webdriverio');
 SessionManager.prototype._configureRemote = function (webdriverOptions, remote, callback) {
   var self = this;
 
-  log.debug('[chimp][session-manager] creating webdriver remote ');
+  log.debug('[chimp][grid-manager] creating webdriver remote ');
 
   var browser = remote(webdriverOptions);
   function decideReuse() {
 
     if (self.options.browser === 'phantomjs') {
-      log.debug('[chimp][session-manager] browser is phantomjs, not reusing a session');
+      log.debug('[chimp][grid-manager] browser is phantomjs, not reusing a session');
       callback(null, browser);
       return;
     }
 
     if (self.options.browser === 'chromedriver') {
-      log.debug('[chimp][session-manager] browser is chromedriver, not reusing a session');
+      log.debug('[chimp][grid-manager] browser is chromedriver, not reusing a session');
       callback(null, browser);
       return;
     }
 
     if (booleanHelper.isTruthy(process.env['chimp.noSessionReuse'])) {
-      log.debug('[chimp][session-manager] noSessionReuse is true, not reusing a session');
+      log.debug('[chimp][grid-manager] noSessionReuse is true, not reusing a session');
       callback(null, browser);
       return;
     }
 
     if (booleanHelper.isFalsey(process.env['chimp.watch']) && booleanHelper.isFalsey(process.env['chimp.server'])) {
-      log.debug('[chimp][session-manager] watch mode is false, not reusing a session');
+      log.debug('[chimp][grid-manager] watch mode is false, not reusing a session');
       callback(null, browser);
       return;
     }
@@ -82,20 +83,18 @@ SessionManager.prototype._configureRemote = function (webdriverOptions, remote, 
         return;
       }
       if (sessions.length !== 0) {
-        log.debug('[chimp][session-manager] Found an open selenium sessions, reusing session', sessions[0].id);
+        log.debug('[chimp][grid-manager] Found an open selenium sessions, reusing session', sessions[0].id);
         browser._original.requestHandler.sessionID = sessions[0].id;
       } else {
-        log.debug('[chimp][session-manager] Did not find any open selenium sessions, not reusing a session');
+        log.debug('[chimp][grid-manager] Did not find any open selenium sessions, not reusing a session');
       }
 
       browser = self._monkeyPatchBrowserSessionManagement(browser, sessions);
       callback(null, browser);
     });
-
   }
 
   this._waitForConnection(browser, decideReuse);
-
 };
 
 SessionManager.prototype.multiremote = function (webdriverOptions, callback) {
@@ -106,62 +105,57 @@ SessionManager.prototype.remote = function (webdriverOptions, callback) {
   this._configureRemote(webdriverOptions, this.webdriver.remote, callback);
 };
 
-
 SessionManager.prototype._waitForConnection = function (browser, callback) {
-  log.debug('[chimp][session-manager] checking connection to selenium server');
+  log.debug('[chimp][grid-manager] checking connection to selenium server');
   var self = this;
-  browser.statusAsync().then(
-    () => {
-      log.debug('[chimp][session-manager] Connection to the to selenium server verified');
-      callback();
-    },
-    (err) => {
-      if (err && /ECONNREFUSED/.test(err.message)) {
-        if (++self.retry === self.maxRetries) {
-          callback('[chimp][session-manager] timed out retrying to connect to selenium server');
-        }
-        log.debug('[chimp][session-manager] could not connect to the server, retrying', '(' + self.retry + '/' + self.maxRetries + ')');
-        setTimeout(function () {
-          self._waitForConnection(browser, callback);
-        }, self.retryDelay);
-      } else {
-        log.debug('[chimp][session-manager] Connection to the to selenium server verified');
-        callback();
+  browser.statusAsync().then(function () {
+    log.debug('[chimp][grid-manager] Connection to the to selenium server verified');
+    callback();
+  }, function (err) {
+    if (err && /ECONNREFUSED/.test(err.message)) {
+      if (++self.retry === self.maxRetries) {
+        callback('[chimp][grid-manager] timed out retrying to connect to selenium server');
       }
+      log.debug('[chimp][grid-manager] could not connect to the server, retrying', '(' + self.retry + '/' + self.maxRetries + ')');
+      setTimeout(function () {
+        self._waitForConnection(browser, callback);
+      }, self.retryDelay);
+    } else {
+      log.debug('[chimp][grid-manager] Connection to the to selenium server verified');
+      callback();
     }
-  );
+  });
 };
-
 
 SessionManager.prototype._monkeyPatchBrowserSessionManagement = function (browser, sessions) {
 
-  log.debug('[chimp][session-manager]', 'monkey patching the browser object');
+  log.debug('[chimp][grid-manager]', 'monkey patching the browser object');
 
-  var callbacker = function () {
+  var callbacker = function callbacker() {
     var cb = arguments[arguments.length - 1];
     if (cb && typeof cb === 'function') {
       cb();
     }
     return {
-      then: function (c) {
+      then: function then(c) {
         c();
       }
     };
   };
 
-  var initWrapperFactory = function (init) {
+  var initWrapperFactory = function initWrapperFactory(init) {
     return function () {
       if (sessions.length !== 0) {
-        log.debug('[chimp][session-manager]', 'browser already initialized');
+        log.debug('[chimp][grid-manager]', 'browser already initialized');
         return callbacker.apply(this, arguments);
       } else {
-        log.debug('[chimp][session-manager]', 'initializing browser');
+        log.debug('[chimp][grid-manager]', 'initializing browser');
         return init.apply(this, arguments);
       }
     };
   };
 
-  var updateBrowserObject = function (browserObject) {
+  var updateBrowserObject = function updateBrowserObject(browserObject) {
     browserObject._initAsync = browserObject.initAsync;
     browserObject.initAsync = initWrapperFactory(browserObject.initAsync);
     browserObject._initSync = browserObject.initSync;
@@ -190,8 +184,7 @@ SessionManager.prototype._monkeyPatchBrowserSessionManagement = function (browse
     browser.instances.forEach(function (singleBrowser) {
       singleBrowser = updateBrowserObject(singleBrowser);
     });
-  }
-  else {
+  } else {
     browser = updateBrowserObject(browser);
   }
 
@@ -207,7 +200,7 @@ SessionManager.prototype._getWebdriverSessions = function (callback) {
 
   var wdHubSessions = 'http://' + this.options.host + ':' + this.options.port + '/wd/hub/sessions';
 
-  log.debug('[chimp][session-manager]', 'requesting sessions from', wdHubSessions);
+  log.debug('[chimp][grid-manager]', 'requesting sessions from', wdHubSessions);
 
   requestretry({
     url: wdHubSessions,
@@ -216,14 +209,13 @@ SessionManager.prototype._getWebdriverSessions = function (callback) {
     retryStrategy: requestretry.RetryStrategies.HTTPOrNetworkError
   }, function (error, response, body) {
     if (!error && response.statusCode === 200) {
-      log.debug('[chimp][session-manager]', 'received data', body);
+      log.debug('[chimp][grid-manager]', 'received data', body);
       callback(null, JSON.parse(body).value);
     } else {
-      log.error('[chimp][session-manager]', 'received error', error, 'response', response);
+      log.error('[chimp][grid-manager]', 'received error', error, 'response', response);
       callback(error);
     }
   });
-
 };
 
 /**
@@ -233,57 +225,27 @@ SessionManager.prototype._getWebdriverSessions = function (callback) {
  */
 SessionManager.prototype.killCurrentSession = function (callback) {
 
-
-  if (this.options.browser === 'phantomjs') {
-    log.debug('[chimp][session-manager] browser is phantomjs, not killing session');
-    callback();
-    return;
-  }
+  //
+  // if (this.options.browser === 'phantomjs') {
+  //   log.debug('[chimp][grid-manager] browser is phantomjs, not killing session');
+  //   callback();
+  //   return;
+  // }
 
   if (!process.env['chimp.noSessionReuse']) {
-    log.debug('[chimp][session-manager] noSessionReuse is true, , not killing session');
+    log.debug('[chimp][grid-manager] noSessionReuse is true, , not killing session');
     callback();
     return;
   }
 
-  if ((parseBoolean(process.env['chimp.watch']) || parseBoolean(process.env['chimp.server']))
-    && !parseBoolean(process.env['forceSessionKill'])) {
-    log.debug('[chimp][session-manager] watch / server mode are true, not killing session');
+  if ((parseBoolean(process.env['chimp.watch']) || parseBoolean(process.env['chimp.server'])) && !parseBoolean(process.env['forceSessionKill'])) {
+    log.debug('[chimp][grid-manager] watch / server mode are true, not killing session');
     callback();
     return;
   }
 
-
-  var wdHubSession = 'http://' + this.options.host + ':' + this.options.port + '/wd/hub/session';
-
-  this._getWebdriverSessions(function (err, sessions) {
-    console.log("_getWebdriverSessions in killCurrentSession")
-    console.log("sessions")
-    console.log(sessions)
-    console.log("err")
-    console.log(err)
-    if (sessions && sessions.length) {
-      sessions.forEach(function (session) {
-        var sessionId = session.id;
-        log.debug('[chimp][session-manager]', 'deleting wd session', sessionId);
-
-        request.del(wdHubSession + '/' + sessionId, function (error, response, body) {
-          if (!error && response.statusCode === 200) {
-            log.debug('[chimp][session-manager]', 'received data', body);
-            callback();
-          } else {
-            log.error('[chimp][session-manager]', 'received error', error);
-            callback(error);
-          }
-        });
-      });
-    } else {
-      callback(null);
-    }
-
-  });
-
-
+  this.end();
+  callback();
 };
 
 module.exports = SessionManager;

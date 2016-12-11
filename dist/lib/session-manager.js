@@ -246,7 +246,11 @@ SessionManager.prototype.killCurrentSession = function (callback) {
   var wdHubSession = 'http://' + this.options.host + ':' + this.options.port + '/wd/hub/session';
 
   this._getWebdriverSessions(function (err, sessions) {
-
+    console.log("_getWebdriverSessions in killCurrentSession");
+    console.log("sessions");
+    console.log(sessions);
+    console.log("err");
+    console.log(err);
     if (sessions && sessions.length) {
       sessions.forEach(function (session) {
         var sessionId = session.id;
